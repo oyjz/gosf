@@ -2,7 +2,6 @@ package gosf
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"sync"
 )
@@ -10,7 +9,7 @@ import (
 type Gosf struct {
 	Config    Config
 	IsRelease bool
-	Logger    *log.Logger
+	Logger    *Logger
 	WaitGroup sync.WaitGroup
 	Task      []func(app *Gosf)
 }
@@ -18,7 +17,8 @@ type Gosf struct {
 // APP配置
 type Config struct {
 	Name    string // APP 名称
-	LogFile string // APP日志路径
+	LogPath string // APP日志路径
+	LogMaxSize int // 日志文件最大大小，单位M
 }
 
 // 获取一个新的APP实例
@@ -65,7 +65,7 @@ func (app *Gosf) Add(f func(app *Gosf)) {
 // PanicErr 错误处理
 func (app *Gosf) PanicErr(err error, v ...any) {
 	if err != nil {
-		app.Logger.Println(v, err)
+		app.Logger.Fatal(v, err)
 		if app.IsRelease {
 			fmt.Println(v, err.Error())
 			os.Exit(3)
@@ -78,14 +78,14 @@ func (app *Gosf) PanicErr(err error, v ...any) {
 // FmtLog 终端输出，日志也记录
 func (app *Gosf) FmtLog(v ...any) {
 	fmt.Println(v)
-	app.Logger.Println(v)
+	app.Logger.Info(v)
 }
 
 // Exit 中断程序
 func (app *Gosf) Exit(v ...any) {
 	if len(v) > 0 {
 		fmt.Println(v)
-		app.Logger.Println(v)
+		app.Logger.Fatal(v)
 	}
 	os.Exit(1)
 }

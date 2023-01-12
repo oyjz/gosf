@@ -19,24 +19,24 @@ func IsRelease() bool {
 }
 
 // RootPath 获取运行目录
-func RootPath() (string, error) {
+func RootPath() string {
 	var rootPath string
 	var err error
 	// 设置程序根目录
 	rootPath, err = os.Getwd()
 	if err != nil {
-		return "", err
+		return "./"
 	}
 	if IsRelease() {
 		// 如果是二进制运行，是取对应二进制文件所在目录
 		var ex string
 		ex, err = os.Executable()
 		if err != nil {
-			return "", err
+			return "./"
 		}
 		rootPath = filepath.Dir(ex)
 	}
-	return rootPath, nil
+	return rootPath
 }
 
 // PathExists 判断文件/文件夹是否存在

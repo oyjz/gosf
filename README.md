@@ -2,6 +2,8 @@
 
 a simple service framework for go.
 
+For personal study only.
+
 ## Installation
 Use Go modules to install GOSF in your application.
 

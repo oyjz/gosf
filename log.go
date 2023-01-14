@@ -94,12 +94,12 @@ func (logger *Logger) Fatal(v ...any) {
 func (logger *Logger) GetLogFile(level string) *os.File {
 	if len(logger.Path) > 0 {
 		path := logger.Path
-		level = level + "\\"
+		level = level + "/"
 		// 设置时区
 		var cstSh, _ = time.LoadLocation("Asia/Shanghai") // 上海
 		t := time.Now().In(cstSh)
 		// 日志目录，不存在则创建
-		logPath := fmt.Sprintf("%s\\%s", path, level)
+		logPath := fmt.Sprintf("%s/%s", path, level)
 		checkPath, _ := PathExists(logPath)
 		if !checkPath {
 			_ = os.MkdirAll(logPath, os.ModePerm)

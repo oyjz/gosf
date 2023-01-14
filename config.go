@@ -5,7 +5,7 @@ import (
 	"os"
 )
 
-// Configer 获取配置实例
+// Config 获取配置实例
 func Configer(file string) config.Config {
 	checkPath, err := PathExists(file)
 	if !checkPath {

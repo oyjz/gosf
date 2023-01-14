@@ -16,9 +16,10 @@ type Gosf struct {
 
 // APP配置
 type Config struct {
-	Name    string // APP 名称
-	LogPath string // APP日志路径
-	LogMaxSize int // 日志文件最大大小，单位M
+	Name       string // APP 名称
+	LogPath    string // APP日志路径
+	ConfigFile string // APP日志路径
+	LogMaxSize int    // 日志文件最大大小，单位M
 }
 
 // 获取一个新的APP实例

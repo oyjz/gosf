@@ -1,7 +1,6 @@
 package gosf
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -45,23 +44,22 @@ func PathExists(path string) (bool, error) {
 	if err == nil {
 		return true, nil
 	}
-	if os.IsNotExist(err) {
-		return false, nil
-	}
+	// if os.IsNotExist(err) {
+	// 	return false, nil
+	// }
 	return false, err
 }
 
-// func MkdirAll(path string) {
-// 	res, _ := PathExists(path)
-// 	if !res {
-// 		_ = os.MkdirAll(path, os.ModePerm)
-// 	}
-// }
+func MkdirAll(path string) {
+	res, _ := PathExists(path)
+	if !res {
+		_ = os.MkdirAll(path, os.ModePerm)
+	}
+}
 
 // Exit 退出程序
 func Exit(v ...any) {
 	if len(v) > 0 {
-		fmt.Println(v)
 		log.Println(v)
 	}
 	os.Exit(1)

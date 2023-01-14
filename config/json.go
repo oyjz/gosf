@@ -111,7 +111,7 @@ func (jconfig *JsonConfig) GetAs(key string, target interface{}) error {
 // If supplied key is not found and defaultValue is set to nil it returns a KeyNotFoundError
 // If supplied key path goes deeper into a non-map type (string, int, bool) it returns a UnexpectedValueTypeError
 func (jconfig *JsonConfig) Get(key string, defaultValue interface{}) (interface{}, error) {
-	parts := strings.Split(key, "/")
+	parts := strings.Split(key, ".")
 	var tmp interface{} = jconfig.obj
 	for index, part := range parts {
 		if len(part) == 0 {

@@ -1,11 +1,12 @@
 package gosf
 
 import (
-	"gosf/config"
 	"os"
+
+	"github.com/oyjz/gosf/config"
 )
 
-// Config 获取配置实例
+// Configer 获取配置实例
 func Configer(file string) config.Config {
 	checkPath, err := PathExists(file)
 	if !checkPath {
@@ -15,12 +16,17 @@ func Configer(file string) config.Config {
 	if err != nil {
 		Exit("config file open found", err)
 	}
-	defer f.Close()
+	defer func(f *os.File) {
+		err := f.Close()
+		if err != nil {
 
-	config, err := config.FromJson(f)
+		}
+	}(f)
+
+	value, err := config.FromJson(f)
 	if err != nil {
 		Exit("config file parse found", err)
 	}
 
-	return config
+	return value
 }

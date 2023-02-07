@@ -96,7 +96,10 @@ func (logger *Logger) GetLogFile(level string) *os.File {
 		path := logger.Path
 		level = level + "/"
 		// 设置时区
-		var cstSh, _ = time.LoadLocation("Asia/Shanghai") // 上海
+		cstSh, err := time.LoadLocation("Asia/Shanghai") // 上海
+		if err != nil {
+			cstSh = time.FixedZone("CST", 8*3600)
+		}
 		t := time.Now().In(cstSh)
 		// 日志目录，不存在则创建
 		logPath := fmt.Sprintf("%s/%s", path, level)

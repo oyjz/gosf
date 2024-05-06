@@ -215,6 +215,7 @@ func (p *Upgrade) installUpdate() error {
 	if err != nil {
 		fmt.Println("md5 get failed", err)
 		_ = os.Remove(p.tmpName)
+		_ = os.Remove(p.bakPath)
 		return err
 	}
 	if fileMd5 == p.newMd5 {
@@ -232,6 +233,7 @@ func (p *Upgrade) installUpdate() error {
 		return nil
 	} else {
 		_ = os.Remove(p.tmpName)
+		_ = os.Remove(p.bakPath)
 		fmt.Println("download file md5 is error", fileMd5)
 		return errors.New("download file md5 is error")
 	}

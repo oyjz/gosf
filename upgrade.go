@@ -36,7 +36,7 @@ func NewUpgrade() *Upgrade {
 func (p *Upgrade) setConfig() {
 	// 设置标识默认为公网IP
 	if p.ID == "" {
-		p.ID = NewSystem().getPublicIP()
+		p.ID = NewSystem().GetPublicIP()
 	}
 
 	// 获取系统临时目录路径

@@ -134,7 +134,7 @@ func (p *System) GetIp() []string {
 	return p.InternalIp
 }
 
-func (p *System) getPublicIP() string {
+func (p *System) GetPublicIP() string {
 	resp, err := http.Get("http://ifconfig.me")
 	if err != nil {
 		return ""
@@ -171,8 +171,8 @@ func (p *System) isPrivateSubnetCIDR(ip net.IP) bool {
 	return false
 }
 
-// getInternalIPs 获取所有内网IP地址
-func (p *System) getInternalIPs() []string {
+// GetInternalIPs 获取所有内网IP地址
+func (p *System) GetInternalIPs() []string {
 	var internalIPs []string
 	interfaces, err := net.Interfaces()
 	if err != nil {

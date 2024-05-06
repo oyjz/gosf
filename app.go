@@ -8,20 +8,20 @@ import (
 )
 
 type Gosf struct {
-	Name      string // APP名称
-	Path      string // APP所在路径
 	Config    Config
 	IsRelease bool
 	Logger    *Logger
 	WaitGroup sync.WaitGroup
 	Task      []func(app *Gosf)
-	Version   string
 }
 
 // Config APP配置
 type Config struct {
+	Name       string // APP名称，默认二进制文件名
+	Path       string // APP所在路径，默认二进制文件所在目录
 	LogPath    string // APP日志保存目录
 	LogMaxSize int    // 日志文件最大大小，单位M
+	Version    string
 }
 
 // App 获取一个新的APP实例
@@ -41,12 +41,12 @@ func App(config Config) Gosf {
 // NewApp 获取一个新的APP实例 返回Gosf指针
 func NewApp(config Config) *Gosf {
 	path, _ := os.Executable()
-	appPath := filepath.Dir(path)
-	_, appName := filepath.Split(path)
+	config.Path = filepath.Dir(path)
+	if config.Name == "" {
+		_, config.Name = filepath.Split(path)
+	}
 
 	app := &Gosf{
-		Name:      appName,
-		Path:      appPath,
 		Config:    config,
 		IsRelease: IsRelease(),
 		WaitGroup: sync.WaitGroup{},

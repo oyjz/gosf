@@ -259,6 +259,7 @@ func (p *Upgrade) KillApp(app *Gosf) error {
 	cmd = exec.Command("ps", "-A", "-o", "pid,etime,comm")
 
 	ppid := os.Getppid()
+	pid := os.Getpid()
 
 	output, err := cmd.Output()
 	if err != nil {
@@ -270,7 +271,7 @@ func (p *Upgrade) KillApp(app *Gosf) error {
 	for _, line := range lines {
 		fields := strings.Fields(line)
 		if len(fields) >= 2 {
-			pid := fields[0]
+			pidStr := fields[0]
 			etime := fields[1]
 
 			seconds, err := p.timeToSeconds(etime)
@@ -279,13 +280,13 @@ func (p *Upgrade) KillApp(app *Gosf) error {
 				continue
 			}
 
-			pidInt, _ := strconv.Atoi(pid)
+			pidInt, _ := strconv.Atoi(pidStr)
 
 			// 如果运行时间超过10s且是目标应用程序，则杀死进程
-			if seconds > 60 && strings.Contains(fields[2], p.AppName) && pidInt != ppid {
-				killCmd := exec.Command("kill", pid)
+			if seconds > 60 && strings.Contains(fields[2], p.AppName) && pidInt != ppid && pidInt != pid {
+				killCmd := exec.Command("kill", pidStr)
 				_ = killCmd.Run()
-				fmt.Println("Killed process with PID:", pid)
+				fmt.Println("Killed process with PID:", pidStr)
 			}
 		}
 	}

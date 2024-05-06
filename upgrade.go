@@ -243,7 +243,9 @@ func (p *Upgrade) restartApp() error {
 }
 
 // KillApp 杀掉原进程【程序启动的时候用来检测是否有残留的进程，建议放init方法里】
-func (p *Upgrade) KillApp() error {
+func (p *Upgrade) KillApp(app *Gosf) error {
+	p.AppName = app.Config.Name
+	p.AppPath = app.Config.Path
 	// 初始化配置
 	p.setConfig()
 

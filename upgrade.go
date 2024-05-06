@@ -79,8 +79,17 @@ func (p *Upgrade) Do() {
 	if p.updateAvailable() {
 
 		// 判断剩余磁盘空间是否够，足够才下载
+		appFileInfo, err := os.Stat(p.appPath)
+		var appFileSize int64
+		if err != nil {
+			fmt.Println("app file stat error", err)
+			appFileSize = 10240
+		} else {
+			appFileSize = appFileInfo.Size()/1024 + 2048
+		}
+
 		available := NewSystem().GetAvailable(p.appPath)
-		if available < 8192 {
+		if available < int(appFileSize) {
 			fmt.Println("The available space cannot be less than 8M")
 			return
 		}

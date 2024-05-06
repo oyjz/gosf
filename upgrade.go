@@ -244,6 +244,14 @@ func (p *Upgrade) restartApp() error {
 
 // KillApp 杀掉原进程【程序启动的时候用来检测是否有残留的进程，建议放init方法里】
 func (p *Upgrade) KillApp() error {
+	// 初始化配置
+	p.setConfig()
+
+	if p.AppName == "" {
+		fmt.Println("AppName is empty")
+		return nil
+	}
+
 	// 获取所有进程
 	var cmd *exec.Cmd
 	cmd = exec.Command("ps", "-A", "-o", "pid,etime,comm")
@@ -272,7 +280,7 @@ func (p *Upgrade) KillApp() error {
 			pidInt, _ := strconv.Atoi(pid)
 
 			// 如果运行时间超过10s且是目标应用程序，则杀死进程
-			if seconds > 10 && strings.Contains(fields[2], p.AppName) && pidInt != ppid {
+			if seconds > 60 && strings.Contains(fields[2], p.AppName) && pidInt != ppid {
 				killCmd := exec.Command("kill", pid)
 				_ = killCmd.Run()
 				fmt.Println("Killed process with PID:", pid)

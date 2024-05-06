@@ -14,7 +14,7 @@ type Gosf struct {
 	Task      []func(app *Gosf)
 }
 
-// APP配置
+// Config APP配置
 type Config struct {
 	Name       string // APP 名称
 	LogPath    string // APP日志路径
@@ -22,7 +22,8 @@ type Config struct {
 	LogMaxSize int    // 日志文件最大大小，单位M
 }
 
-// 获取一个新的APP实例
+// App 获取一个新的APP实例
+// Deprecated: User gosf.NewApp()
 func App(config Config) Gosf {
 	var app Gosf
 	var task []func(app *Gosf)
@@ -35,7 +36,21 @@ func App(config Config) Gosf {
 	return app
 }
 
-// 执行任务
+// NewApp 获取一个新的APP实例 返回Gosf指针
+func NewApp(config Config) *Gosf {
+	app := &Gosf{
+		Config:    config,
+		IsRelease: IsRelease(),
+		WaitGroup: sync.WaitGroup{},
+		// Task 初始化时可能为空，但通常会在其他地方填充
+		Task: []func(*Gosf){}, // 初始化一个空的函数切片
+	}
+
+	app.Logger = app.Log()
+	return app
+}
+
+// Run 执行任务
 func (app *Gosf) Run() {
 
 	// 创建一个Daemon对象

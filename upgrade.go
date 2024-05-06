@@ -16,11 +16,11 @@ import (
 )
 
 type Upgrade struct {
-	ID       string // 当前服务器标识（根据各自业务而定，可以是自定义的唯一标识，也可以是公网IP、MAC地址等）
-	AppPath  string // APP 所在路劲
-	AppName  string // APP 名称
-	CheckUrl string // 最新版本文件MD5
-	FileUrl  string // 最新版本文件下载链接
+	ID       string // 【需要设置】当前服务器标识（根据各自业务而定，可以是自定义的唯一标识，也可以是公网IP、MAC地址等）
+	AppPath  string // 【必须设置】APP 所在路劲
+	AppName  string // 【必须设置】APP 名称
+	CheckUrl string // 【必须设置】最新版本文件MD5
+	FileUrl  string // 【必须设置】最新版本文件下载链接
 	newMd5   string // 最新版本文件MD5
 	appPath  string // APP文件全路径
 	tmpName  string // APP临时文件名称
@@ -48,8 +48,8 @@ func (p *Upgrade) setConfig() {
 	p.bakPath = filepath.Join(tempDir, p.bakName)
 }
 
+// Run 定时检测升级
 func (p *Upgrade) Run() {
-
 	p.Do()
 
 	for {
@@ -59,15 +59,22 @@ func (p *Upgrade) Run() {
 		time.Sleep(time.Duration(randomInt) * time.Minute)
 
 		p.Do()
-
 	}
 }
 
+// Do 检测升级
 func (p *Upgrade) Do() {
+	now := time.Now().Format("2006-01-02 15:04:05")
+
 	// 初始化配置
 	p.setConfig()
 
-	now := time.Now().Format("2006-01-02 15:04:05")
+	// 检验是否完成相关配置
+	if p.CheckUrl == "" || p.FileUrl == "" || p.AppName == "" || p.AppPath == "" {
+		fmt.Println(now, "incomplete upgrade configuration")
+		return
+	}
+
 	// 检查更新
 	if p.updateAvailable() {
 
@@ -111,6 +118,7 @@ func (p *Upgrade) Do() {
 	}
 }
 
+// 校验是否需要升级，接口返回最新升级文件MD5，通过校验本地文件MD5是否一致来判断是否需要升级
 func (p *Upgrade) updateAvailable() bool {
 	fileMd5, err := getFileMD5(p.appPath)
 	if err != nil {
@@ -234,7 +242,7 @@ func (p *Upgrade) restartApp() error {
 	return nil
 }
 
-// KillApp 杀掉原进程
+// KillApp 杀掉原进程【程序启动的时候用来检测是否有残留的进程，建议放init方法里】
 func (p *Upgrade) KillApp() error {
 	// 获取所有进程
 	var cmd *exec.Cmd

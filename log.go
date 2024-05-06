@@ -34,11 +34,11 @@ func (app *Gosf) Log() *Logger {
 		errorLogger = log.New(os.Stdout, "", log.LstdFlags|log.Lmicroseconds|log.Lmsgprefix|log.Lshortfile)
 		fatalLogger = log.New(os.Stdout, "", log.LstdFlags|log.Lmicroseconds|log.Lmsgprefix|log.Lshortfile)
 	}
-	if len(app.Config.Name) > 0 {
-		debugLogger.SetPrefix("[" + app.Config.Name + "] ")
-		infoLogger.SetPrefix("[" + app.Config.Name + "] ")
-		errorLogger.SetPrefix("[" + app.Config.Name + "] ")
-		fatalLogger.SetPrefix("[" + app.Config.Name + "] ")
+	if len(app.Name) > 0 {
+		debugLogger.SetPrefix("[" + app.Name + "] ")
+		infoLogger.SetPrefix("[" + app.Name + "] ")
+		errorLogger.SetPrefix("[" + app.Name + "] ")
+		fatalLogger.SetPrefix("[" + app.Name + "] ")
 	}
 	if len(app.Config.LogPath) > 0 {
 		checkPath, _ := PathExists(app.Config.LogPath)

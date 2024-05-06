@@ -120,7 +120,7 @@ func (p *Upgrade) Do() {
 
 // 校验是否需要升级，接口返回最新升级文件MD5，通过校验本地文件MD5是否一致来判断是否需要升级
 func (p *Upgrade) updateAvailable() bool {
-	fileMd5, err := getFileMD5(p.appPath)
+	fileMd5, err := GetFileMD5(p.appPath)
 	if err != nil {
 		fmt.Println("md5 get failed", err)
 		return false
@@ -202,7 +202,7 @@ func (p *Upgrade) downloadUpdate() error {
 
 // 安装文件
 func (p *Upgrade) installUpdate() error {
-	fileMd5, err := getFileMD5(p.tmpName)
+	fileMd5, err := GetFileMD5(p.tmpName)
 	if err != nil {
 		fmt.Println("md5 get failed", err)
 		_ = os.Remove(p.tmpName)
@@ -231,7 +231,7 @@ func (p *Upgrade) installUpdate() error {
 // 重启应用
 func (p *Upgrade) restartApp() error {
 
-	err := startProgram(p.AppPath, "./"+p.AppName)
+	err := StartProgram(p.AppPath, "./"+p.AppName)
 
 	if err != nil {
 		_ = os.Remove(p.bakPath)

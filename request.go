@@ -107,7 +107,7 @@ func (p *Request) AddHeader(key string, value string) *Request {
 
 func (p *Request) Do() (error, []byte) {
 	method := "GET"
-	if inForString([]string{"POST", "GET"}, p.method) {
+	if InForString([]string{"POST", "GET"}, p.method) {
 		method = p.method
 	}
 	_url := p.url

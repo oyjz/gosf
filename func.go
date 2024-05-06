@@ -71,7 +71,7 @@ func Exit(v ...any) {
 	os.Exit(1)
 }
 
-func isProcessRunning(processName string) (bool, error) {
+func IsProcessRunning(processName string) (bool, error) {
 	files, err := os.ReadDir("/proc")
 	if err != nil {
 		return false, err
@@ -96,7 +96,7 @@ func isProcessRunning(processName string) (bool, error) {
 	return false, nil
 }
 
-func startProgram(programDir, programName string, args ...string) error {
+func StartProgram(programDir, programName string, args ...string) error {
 	// 获取当前工作目录
 	wd, err := os.Getwd()
 	if err != nil {
@@ -127,7 +127,7 @@ func startProgram(programDir, programName string, args ...string) error {
 	return nil
 }
 
-func inForString(items []string, item string) bool {
+func InForString(items []string, item string) bool {
 	sort.Strings(items)
 	index := sort.SearchStrings(items, item)
 	// index的取值：[0,len(str_array)]
@@ -138,7 +138,7 @@ func inForString(items []string, item string) bool {
 	return false
 }
 
-func readFile(filePath string) string {
+func ReadFile(filePath string) string {
 	// 读取文件内容
 	content, err := os.ReadFile(filePath)
 	if err != nil {
@@ -149,7 +149,7 @@ func readFile(filePath string) string {
 }
 
 // 清空文件内容
-func clearFileContent(filePath string) error {
+func ClearFileContent(filePath string) error {
 	// 打开文件以进行写入（截断模式）
 	file, err := os.OpenFile(filePath, os.O_WRONLY|os.O_TRUNC, 0666)
 	if err != nil {
@@ -166,7 +166,7 @@ func clearFileContent(filePath string) error {
 }
 
 // 替换文件
-func replaceFile(sourcePath, destPath string) error {
+func ReplaceFile(sourcePath, destPath string) error {
 	// 打开源文件
 	sourceFile, err := os.Open(sourcePath)
 	if err != nil {
@@ -204,7 +204,7 @@ func replaceFile(sourcePath, destPath string) error {
 	return nil
 }
 
-func killProcessByName(processName string) error {
+func KillProcessByName(processName string) error {
 	// 执行ps命令获取进程列表
 	psCmd := exec.Command("ps", "-A", "-o", "pid,cmd")
 	output, err := psCmd.Output()
@@ -229,7 +229,7 @@ func killProcessByName(processName string) error {
 	return nil
 }
 
-func getFileMD5(filePath string) (string, error) {
+func GetFileMD5(filePath string) (string, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return "", err

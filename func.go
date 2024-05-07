@@ -71,6 +71,14 @@ func Exit(v ...any) {
 	os.Exit(1)
 }
 
+// PanicErr 错误处理
+func PanicErr(err error, v ...any) {
+	if err != nil {
+		fmt.Println(v, err.Error())
+		os.Exit(1)
+	}
+}
+
 func IsProcessRunning(processName string) (bool, error) {
 	files, err := os.ReadDir("/proc")
 	if err != nil {

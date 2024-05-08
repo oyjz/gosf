@@ -1,7 +1,8 @@
 package gosf
 
 import (
-	"errors"
+	"archive/tar"
+	"compress/gzip"
 	"fmt"
 	"io"
 	"math/rand"
@@ -42,9 +43,9 @@ func (p *Upgrade) setConfig() {
 	// 获取系统临时目录路径
 	tempDir := os.TempDir()
 	p.appPath = filepath.Join(p.AppPath, p.AppName)
-	p.tmpName = p.AppName + "_tmp"
-	p.tmpPath = filepath.Join(p.AppPath, p.tmpName)
-	p.bakName = p.AppName + "_bak"
+	p.tmpName = p.AppName + ".tar.gz"
+	p.tmpPath = filepath.Join(tempDir, p.tmpName)
+	p.bakName = fmt.Sprintf("%s-%s.tar.gz", p.AppName, time.Now().Format("20060102150405"))
 	p.bakPath = filepath.Join(tempDir, p.bakName)
 }
 
@@ -96,21 +97,16 @@ func (p *Upgrade) Do() {
 
 		fmt.Println(now, "start upgrade...")
 		// 备份原程序
-		if err := p.backupCurrentVersion(p.appPath); err != nil {
-			fmt.Println("backup app failed:", err)
-			return
-		}
-
-		// 下载更新
-		if err := p.downloadUpdate(); err != nil {
-			_ = os.Remove(p.bakPath)
-			_ = os.Remove(p.tmpName)
-			fmt.Println("download update failed:", err)
+		if err := p.backup(); err != nil {
+			fmt.Println("backup failed:", err)
 			return
 		}
 
 		// 安装更新
-		if err := p.installUpdate(); err != nil {
+		if err := p.install(); err != nil {
+			_ = os.Remove(p.bakPath)
+			_ = os.Remove(p.tmpName)
+			fmt.Println("install failed:", err)
 			return
 		}
 
@@ -161,25 +157,73 @@ func (p *Upgrade) updateAvailable() bool {
 }
 
 // 备份当前文件
-func (p *Upgrade) backupCurrentVersion(originalPath string) error {
-	// 打开原始文件
-	originalFile, err := os.Open(originalPath)
-	if err != nil {
-		return err
-	}
-	defer originalFile.Close()
+func (p *Upgrade) backup() error {
 
-	// 创建备份文件
+	// 创建压缩文件
 	backupFile, err := os.Create(p.bakPath)
 	if err != nil {
+		fmt.Printf("failed to create backup file: %v\n", err)
 		return err
 	}
 	defer backupFile.Close()
 
-	// 复制原始文件内容到备份文件
-	_, err = io.Copy(backupFile, originalFile)
+	// 创建 gzip.Writer
+	gzipWriter := gzip.NewWriter(backupFile)
+	defer gzipWriter.Close()
+
+	// 创建 tar.Writer
+	tarWriter := tar.NewWriter(gzipWriter)
+	defer tarWriter.Close()
+
+	// 遍历源目录下的文件和子目录
+	err = filepath.Walk(p.AppPath, func(path string, info os.FileInfo, err error) error {
+		// 排除 logs 目录和 app.log 文件
+		if info.IsDir() && info.Name() == "logs" {
+			return filepath.SkipDir
+		}
+		// 跳过扩展名为 .log 的文件
+		if !info.IsDir() && strings.ToLower(filepath.Ext(info.Name())) == ".log" {
+			return nil
+		}
+		// 打开文件
+		file, err := os.Open(path)
+		if err != nil {
+			fmt.Printf("Failed to open file %s: %v\n", path, err)
+			return nil
+		}
+		defer file.Close()
+
+		// 获取相对路径
+		relPath, err := filepath.Rel(p.AppPath, path)
+		if err != nil {
+			fmt.Printf("Failed to get relative path for file %s: %v\n", path, err)
+			return nil
+		}
+
+		// 创建 tar 文件头
+		header := &tar.Header{
+			Name:    relPath,
+			Size:    info.Size(),
+			Mode:    int64(info.Mode()),
+			ModTime: info.ModTime(),
+		}
+
+		// 写入 tar 文件头
+		if err := tarWriter.WriteHeader(header); err != nil {
+			fmt.Printf("Failed to write tar header for file %s: %v\n", path, err)
+			return nil
+		}
+
+		// 写入文件内容
+		if _, err := io.Copy(tarWriter, file); err != nil {
+			fmt.Printf("Failed to write file %s to tar: %v\n", path, err)
+		}
+
+		return nil
+	})
+
 	if err != nil {
-		_ = os.Remove(p.bakPath)
+		fmt.Printf("Failed to walk directory: %v\n", err)
 		return err
 	}
 
@@ -187,56 +231,92 @@ func (p *Upgrade) backupCurrentVersion(originalPath string) error {
 	return nil
 }
 
-// 下载升级文件
-func (p *Upgrade) downloadUpdate() error {
+// 安装文件
+func (p *Upgrade) install() error {
+
+	// 下载升级包
 	resp, err := http.Get(p.FileUrl)
 	if err != nil {
+		fmt.Println("download failed", err)
 		return err
 	}
 	defer resp.Body.Close()
 
-	out, err := os.Create(p.tmpName)
-	if err != nil {
-		return err
+	if resp.StatusCode != http.StatusOK {
+		fmt.Println("frp get http status error", resp.Status)
+		return fmt.Errorf("failed to download FRP: %s", resp.Status)
 	}
-	defer out.Close()
 
-	_, err = io.Copy(out, resp.Body)
+	// 创建目标文件
+	targetFile, err := os.Create(p.tmpPath)
 	if err != nil {
-		_ = os.Remove(p.tmpName)
+		fmt.Println("tmp gz file create failed", err)
 		return err
 	}
-	return nil
-}
+	defer targetFile.Close()
 
-// 安装文件
-func (p *Upgrade) installUpdate() error {
-	fileMd5, err := GetFileMD5(p.tmpName)
+	// 将下载的内容保存到目标文件
+	_, err = io.Copy(targetFile, resp.Body)
 	if err != nil {
-		fmt.Println("md5 get failed", err)
-		_ = os.Remove(p.tmpName)
-		_ = os.Remove(p.bakPath)
+		fmt.Println("tmp gz file save failed", err)
 		return err
 	}
-	if fileMd5 == p.newMd5 {
-		// 实现安装更新的逻辑，可以直接替换程序文件
-		err = os.Rename(p.tmpName, p.AppName)
+
+	// 重置文件指针为开头
+	_, err = targetFile.Seek(0, io.SeekStart)
+	if err != nil {
+		fmt.Println("failed to reset tmp gz file pointer:", err)
+		return err
+	}
+
+	// 创建gzip reader
+	gzipReader, err := gzip.NewReader(targetFile)
+	if err != nil {
+		fmt.Println("failed to create gzip reader:", err)
+		return err
+	}
+	defer gzipReader.Close()
+
+	tarReader := tar.NewReader(gzipReader)
+	for {
+		header, err := tarReader.Next()
+		if err == io.EOF {
+			break
+		}
 		if err != nil {
-			fmt.Println("tmp to app failed:", err)
+			fmt.Println("tmp gz file reader next failed", err)
 			return err
 		}
-		// 修改文件权限
-		if err = os.Chmod(p.appPath, 0777); err != nil {
-			fmt.Println("Failed to change app permission:", err)
-			return err
+
+		subFile := filepath.Join(p.appPath, header.Name)
+
+		switch header.Typeflag {
+		case tar.TypeDir:
+			if err := os.MkdirAll(subFile, 0755); err != nil {
+				fmt.Println(" tmp gz file reader failed 1", err)
+				return err
+			}
+		case tar.TypeReg:
+			file, err := os.Create(subFile)
+			if err != nil {
+				fmt.Println("tmp gz file reader failed 2", err)
+				return err
+			}
+			defer file.Close()
+			if _, err := io.Copy(file, tarReader); err != nil {
+				fmt.Println("tmp gz file reader failed 3", err)
+				return err
+			}
+		default:
+			fmt.Println("frp unknown file type", header.Typeflag)
+			return fmt.Errorf("unknown file type %s in tar", header.Typeflag)
 		}
-		return nil
-	} else {
-		_ = os.Remove(p.tmpName)
-		_ = os.Remove(p.bakPath)
-		fmt.Println("download file md5 is error", fileMd5)
-		return errors.New("download file md5 is error")
 	}
+
+	// 删除压缩包
+	_ = os.Remove(p.tmpPath)
+
+	return nil
 }
 
 // 重启应用
@@ -245,7 +325,6 @@ func (p *Upgrade) restartApp() error {
 	err := StartProgram(p.AppPath, "./"+p.AppName)
 
 	if err != nil {
-		_ = os.Remove(p.bakPath)
 		return err
 	}
 	os.Exit(1)

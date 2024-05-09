@@ -29,6 +29,15 @@ func FromJson(reader io.Reader) (Config, error) {
 	return &JsonConfig{obj}, nil
 }
 
+func FromJsonText(text string) (Config, error) {
+	var obj map[string]interface{}
+	if err := json.Unmarshal([]byte(text), &obj); err != nil {
+		return nil, err
+	}
+
+	return &JsonConfig{obj}, nil
+}
+
 // GetString uses Get to fetch the value behind the supplied key.
 // It returns a string with either the retreived value or the default value and any error encountered.
 // If value is not a string it returns a UnexpectedValueTypeError

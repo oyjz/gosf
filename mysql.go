@@ -25,6 +25,7 @@ var db *sql.DB
 var dbMap map[string]*sql.DB
 
 type Mysql struct {
+	dbs map[string]*sql.DB
 }
 
 // DbPool 数据库操作处理结构体
@@ -41,7 +42,7 @@ type DbPool struct {
 	page            int
 }
 
-// NewMysql 单例获取数据库实例
+// NewMysql 单例获取数据库实例，初始化后需要调用关闭数据库连接 defer p.Close()
 func NewMysql(config config.Config) *Mysql {
 	once.Do(func() {
 		dbMap = make(map[string]*sql.DB)
@@ -64,10 +65,12 @@ func NewMysql(config config.Config) *Mysql {
 		}
 	})
 
-	return &Mysql{}
+	return &Mysql{
+		dbs: dbMap,
+	}
 }
 
-// DB 单例获取数据库实例
+// DB 单例获取数据库实例，初始化后需要调用关闭数据库连接 defer p.Close()
 func (p *Mysql) DB(name string) *DbPool {
 	return &DbPool{
 		pool: dbMap[name],
@@ -81,6 +84,13 @@ func (p *DbPool) GetPool() *sql.DB {
 // Table 查询数据表获取
 func (p *DbPool) Table(name string) *DbPool {
 	p.tableName = name
+	p.whereCondition = nil
+	p.selectCondition = nil
+	p.groupCondition = nil
+	p.orderCondition = nil
+	p.lastSql = ""
+	p.page = 1
+	p.limit = 10
 	return p
 }
 
@@ -213,13 +223,11 @@ func dealMysqlRows(rows *sql.Rows) []map[string]interface{} {
 
 // Get 获取第一条数据,返回数据类型为map
 func (p *DbPool) Get() map[string]interface{} {
-	defer p.pool.Close()
 	var RetOne map[string]interface{}
 	p.Limit(1)
 	GetSql := p.sql()
 	p.lastSql = GetSql
 	rows, err := p.pool.Query(GetSql)
-	defer rows.Close()
 	PanicErr(err, "query get error")
 	// 数据获取
 	RetMap := dealMysqlRows(rows)
@@ -231,11 +239,9 @@ func (p *DbPool) Get() map[string]interface{} {
 
 // All 获取多条数据,返回数据类型为slice,slice内层为map
 func (p *DbPool) All() []map[string]interface{} {
-	defer p.pool.Close()
 	GetSql := p.sql()
 	p.lastSql = GetSql
 	rows, err := p.pool.Query(GetSql)
-	defer rows.Close()
 	PanicErr(err, "query all error")
 	// 数据获取
 	RetMap := dealMysqlRows(rows)
@@ -244,7 +250,6 @@ func (p *DbPool) All() []map[string]interface{} {
 
 // Insert 定义创建数据方法,返回最后的ID
 func (p *DbPool) Insert(params map[string]interface{}) (lastId int, err error) {
-	defer p.pool.Close()
 	// defer func() {
 	// 	fmt.Println(p.lastSql)
 	// }()
@@ -310,7 +315,6 @@ func (p *DbPool) Insert(params map[string]interface{}) (lastId int, err error) {
 
 // Update 定义更新数据方法,返回影响的行数
 func (p *DbPool) Update(params map[string]interface{}) (affectRows int, err error) {
-	defer p.pool.Close()
 	// defer func() {
 	// 	fmt.Println(p.lastSql)
 	// }()
@@ -455,7 +459,6 @@ func (p *DbPool) handlerWhere() string {
 
 // Delete 定义删除数据方法
 func (p *DbPool) Delete() (affectRows int, err error) {
-	defer p.pool.Close()
 	// 处理where条件
 	WhereFilter := p.handlerWhere()
 	// 组合删除数据SQL
@@ -482,7 +485,6 @@ func (p *DbPool) Delete() (affectRows int, err error) {
 
 // Execute 查询执行SQL方法
 func (p *DbPool) Execute(Sql string) (affectRows int, err error) {
-	defer p.pool.Close()
 	p.lastSql = Sql
 
 	// 执行，判断是否存在事务
@@ -505,11 +507,9 @@ func (p *DbPool) Execute(Sql string) (affectRows int, err error) {
 
 // FetchOne 定义执行SQL返回一条数据方法
 func (p *DbPool) FetchOne(Sql string) map[string]interface{} {
-	defer p.pool.Close()
 	var RetOne map[string]interface{}
 	p.lastSql = Sql
 	rows, err := p.pool.Query(Sql)
-	defer rows.Close()
 	PanicErr(err, "fetch one error")
 	// 数据获取
 	RetMap := dealMysqlRows(rows)
@@ -521,10 +521,8 @@ func (p *DbPool) FetchOne(Sql string) map[string]interface{} {
 
 // FetchAll 定义执行SQL返回多条数据方法
 func (p *DbPool) FetchAll(Sql string) []map[string]interface{} {
-	defer p.pool.Close()
 	p.lastSql = Sql
 	rows, err := p.pool.Query(Sql)
-	defer rows.Close()
 	PanicErr(err, "fetch all error")
 	// 数据获取
 	RetMap := dealMysqlRows(rows)
@@ -537,9 +535,22 @@ func closeRows(r *sql.Rows) {
 	PanicErr(err, "close rows error")
 }
 
+func (p *DbPool) Close() {
+	if p.pool != nil {
+		p.pool.Close()
+	}
+}
+
+func (p *Mysql) Close() {
+	if p.dbs != nil {
+		for _, dbPool := range p.dbs {
+			dbPool.Close()
+		}
+	}
+}
+
 // BatchInsert 批量插入
 func (p *DbPool) BatchInsert(params []map[string]interface{}) (affectRows int, err error) {
-	defer p.pool.Close()
 	// 自定待创建的函数和参数
 	InsertCols, InsertArgsList := "", ""
 	for k := range params[0] {
@@ -615,7 +626,6 @@ func (p *DbPool) BatchInsert(params []map[string]interface{}) (affectRows int, e
 
 // Count 查询记录数
 func (p *DbPool) Count() int {
-	defer p.pool.Close()
 	p.Select("count(*) as count")
 	GetSql := p.sql()
 	p.lastSql = GetSql

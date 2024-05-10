@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 )
@@ -111,6 +112,11 @@ func StartProgram(programDir, programName string, args ...string) error {
 		return err
 	}
 
+	// 检查程序目录是否存在
+	if _, err := os.Stat(programDir); os.IsNotExist(err) {
+		return fmt.Errorf("directory '%s' does not exist", programDir)
+	}
+
 	// 切换到程序主目录
 	err = os.Chdir(programDir)
 	if err != nil {
@@ -125,6 +131,7 @@ func StartProgram(programDir, programName string, args ...string) error {
 	} else {
 		cmd = exec.Command(programName)
 	}
+	cmd.Dir = programDir
 	cmd.Stdout = os.Stdout // 将程序的标准输出连接到主程序的标准输出
 	cmd.Stderr = os.Stderr // 将程序的标准错误连接到主程序的标准错误
 	err = cmd.Start()
@@ -213,24 +220,53 @@ func ReplaceFile(sourcePath, destPath string) error {
 }
 
 func KillProcessByName(processName string) error {
-	// 执行ps命令获取进程列表
-	psCmd := exec.Command("ps", "-A", "-o", "pid,cmd")
-	output, err := psCmd.Output()
+	var cmd *exec.Cmd
+	var output []byte
+	var err error
+
+	// 判断操作系统类型
+	if runtime.GOOS == "windows" {
+		// Windows系统使用tasklist命令获取进程列表
+		cmd = exec.Command("tasklist")
+	} else {
+		// 其他系统（如Linux）使用ps命令
+		cmd = exec.Command("ps", "-A", "-o", "pid,cmd")
+	}
+
+	output, err = cmd.Output()
 	if err != nil {
 		return err
 	}
 
-	// 解析ps命令输出，查找目标进程并杀死
 	lines := strings.Split(string(output), "\n")
 	for _, line := range lines {
-		fields := strings.Fields(line)
-		if len(fields) >= 2 && strings.Contains(fields[1], processName) {
-			pid := fields[0]
-			killCmd := exec.Command("kill", "-9", pid)
-			if err := killCmd.Run(); err != nil {
-				return err
+		if runtime.GOOS == "windows" {
+			// Windows的tasklist输出格式与Linux的ps不同，需要相应地解析
+			if strings.Contains(line, processName) {
+				fields := strings.Fields(line)
+				if len(fields) > 1 && strings.Contains(fields[0], processName) {
+					pid := fields[1] // Windows的tasklist第二个字段是PID
+					// 使用taskkill命令杀死进程
+					killCmd := exec.Command("taskkill", "/F", "/PID", pid)
+					if err := killCmd.Run(); err != nil {
+						fmt.Printf("Failed to kill process with PID %s: %v\n", pid, err)
+					} else {
+						fmt.Printf("Process with name '%s' (PID: %s) killed successfully.\n", processName, pid)
+					}
+				}
 			}
-			fmt.Printf("Process with name '%s' (PID: %s) killed successfully.\n", processName, pid)
+		} else {
+			// 原始Linux逻辑
+			fields := strings.Fields(line)
+			if len(fields) >= 2 && strings.Contains(fields[1], processName) {
+				pid := fields[0]
+				killCmd := exec.Command("kill", "-9", pid)
+				if err := killCmd.Run(); err != nil {
+					fmt.Printf("Failed to kill process with PID %s: %v\n", pid, err)
+				} else {
+					fmt.Printf("Process with name '%s' (PID: %s) killed successfully.\n", processName, pid)
+				}
+			}
 		}
 	}
 

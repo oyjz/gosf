@@ -104,7 +104,7 @@ func (p *Upgrade) Do() {
 		// 下载更新
 		if err := p.downloadUpdate(); err != nil {
 			_ = os.Remove(p.bakPath)
-			_ = os.Remove(p.tmpName)
+			_ = os.Remove(p.tmpPath)
 			fmt.Println("download update failed:", err)
 			return
 		}
@@ -195,15 +195,17 @@ func (p *Upgrade) downloadUpdate() error {
 	}
 	defer resp.Body.Close()
 
-	out, err := os.Create(p.tmpName)
+	out, err := os.Create(p.tmpPath)
 	if err != nil {
+		fmt.Println("tmp file create failed", err)
 		return err
 	}
 	defer out.Close()
 
 	_, err = io.Copy(out, resp.Body)
 	if err != nil {
-		_ = os.Remove(p.tmpName)
+		fmt.Println("tmp file save failed", err)
+		_ = os.Remove(p.tmpPath)
 		return err
 	}
 	return nil
@@ -211,16 +213,16 @@ func (p *Upgrade) downloadUpdate() error {
 
 // 安装文件
 func (p *Upgrade) installUpdate() error {
-	fileMd5, err := GetFileMD5(p.tmpName)
+	fileMd5, err := GetFileMD5(p.tmpPath)
 	if err != nil {
 		fmt.Println("md5 get failed", err)
-		_ = os.Remove(p.tmpName)
+		_ = os.Remove(p.tmpPath)
 		_ = os.Remove(p.bakPath)
 		return err
 	}
 	if fileMd5 == p.newMd5 {
 		// 实现安装更新的逻辑，可以直接替换程序文件
-		err = os.Rename(p.tmpName, p.AppName)
+		err = os.Rename(p.tmpPath, p.appPath)
 		if err != nil {
 			fmt.Println("tmp to app failed:", err)
 			return err
@@ -232,7 +234,7 @@ func (p *Upgrade) installUpdate() error {
 		}
 		return nil
 	} else {
-		_ = os.Remove(p.tmpName)
+		_ = os.Remove(p.tmpPath)
 		_ = os.Remove(p.bakPath)
 		fmt.Println("download file md5 is error", fileMd5)
 		return errors.New("download file md5 is error")

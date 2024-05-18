@@ -146,16 +146,27 @@ func (p *Upgrade) updateAvailable() bool {
 		return false
 	}
 
+	response := string(body)
+
+	data := strings.Split(response, "|")
+	var md5 string
+	if len(data) > 1 {
+		md5 = data[0]
+		// 重置升级包链接
+		p.FileUrl = data[1]
+	} else {
+		md5 = data[0]
+	}
 	// 校验返回是否是32位MD5格式字符串
 	reg := regexp.MustCompile("^[a-z0-9]{32}$")
 
 	// 如果不是MD5字符串 或者 MD5字符串和当前文件MD5相同，则无需升级
-	if !reg.MatchString(string(body)) || string(body) == fileMd5 {
+	if !reg.MatchString(md5) || md5 == fileMd5 {
 		return false
 	}
 
 	// 设置最新升级文件MD5
-	p.newMd5 = string(body)
+	p.newMd5 = md5
 
 	return true
 }

@@ -230,7 +230,7 @@ func KillProcessByName(processName string) error {
 		cmd = exec.Command("tasklist")
 	} else {
 		// 其他系统（如Linux）使用ps命令
-		cmd = exec.Command("ps", "-A", "-o", "pid,cmd")
+		cmd = exec.Command("ps", "-A", "-o", "pid,comm")
 	}
 
 	output, err = cmd.Output()
